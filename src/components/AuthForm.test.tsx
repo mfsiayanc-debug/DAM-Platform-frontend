@@ -19,11 +19,11 @@ describe('AuthForm', () => {
   it('renders login by default and can switch to signup', () => {
     render(<AuthForm onAuthenticated={() => {}} />);
 
-    expect(screen.getByText(/Sign in/i)).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'Sign in' })).toBeInTheDocument();
 
     const switchButton = screen.getByText(/Sign up/i);
     fireEvent.click(switchButton);
 
-    expect(screen.getByText(/Create an account/i)).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'Create an account' })).toBeInTheDocument();
   });
 });

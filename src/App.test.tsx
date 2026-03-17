@@ -16,9 +16,31 @@ vi.mock('./hooks/useAuth', () => {
   };
 });
 
+vi.mock('./hooks/useAssets', () => {
+  return {
+    useAssets: () => ({
+      assets: [],
+      loading: false,
+      error: null,
+      loadAssets: vi.fn(),
+      updateAsset: vi.fn(),
+      removeAsset: vi.fn(),
+    }),
+  };
+});
+
+vi.mock('./hooks/useUpload', () => {
+  return {
+    useUpload: () => ({
+      uploadJobs: [],
+      startUpload: vi.fn(),
+    }),
+  };
+});
+
 describe('App', () => {
   it('shows auth form when not authenticated', () => {
     render(<App />);
-    expect(screen.getByText(/Sign in/i)).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'Sign in' })).toBeInTheDocument();
   });
 });
