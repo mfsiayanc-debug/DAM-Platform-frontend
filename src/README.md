@@ -5,6 +5,7 @@ A complete Digital Asset Management solution with React frontend and Node.js bac
 ## 🎯 Features
 
 ### Frontend
+
 - **Modern React UI** with Tailwind CSS
 - **Dashboard** with real-time analytics
 - **Asset Gallery** with search, filters, and sorting
@@ -13,6 +14,7 @@ A complete Digital Asset Management solution with React frontend and Node.js bac
 - **Responsive Design** for all screen sizes
 
 ### Backend
+
 - **RESTful API** with Express.js
 - **Background Processing** with BullMQ workers
 - **Object Storage** with MinIO (S3-compatible)
@@ -25,6 +27,7 @@ A complete Digital Asset Management solution with React frontend and Node.js bac
 ## 🚀 Quick Start
 
 ### Prerequisites
+
 - Node.js 18+
 - Docker & Docker Compose
 
@@ -84,6 +87,7 @@ dam-platform/
 ## 🛠 Technology Stack
 
 ### Frontend
+
 - **React** - UI framework
 - **TypeScript** - Type safety
 - **Tailwind CSS** - Styling
@@ -91,6 +95,7 @@ dam-platform/
 - **Lucide React** - Icons
 
 ### Backend
+
 - **Node.js** - Runtime
 - **Express** - Web framework
 - **BullMQ** - Job queue
@@ -101,6 +106,7 @@ dam-platform/
 - **MinIO** - Object storage
 
 ### DevOps
+
 - **Docker** - Containerization
 - **Docker Swarm** - Orchestration
 - **Kubernetes** - Production orchestration (optional)
@@ -115,6 +121,7 @@ dam-platform/
 ## 🔌 API Endpoints
 
 ### Assets
+
 - `POST /api/assets/upload` - Upload files (multipart/form-data)
 - `GET /api/assets` - Get all assets with filters
 - `GET /api/assets/:id` - Get asset by ID
@@ -123,9 +130,11 @@ dam-platform/
 - `PATCH /api/assets/:id/tags` - Update tags
 
 ### Stats
+
 - `GET /api/stats` - Get dashboard statistics
 
 ### Query Parameters (GET /api/assets)
+
 - `type` - Filter by type (image, video, document, all)
 - `search` - Search by name or tags
 - `sortBy` - Sort field (uploaded_at, name, downloads)
@@ -213,16 +222,19 @@ See [DEPLOYMENT.md](DEPLOYMENT.md) for detailed instructions.
 ## 📊 Monitoring
 
 ### Health Check
+
 ```bash
 curl http://localhost:3001/health
 ```
 
 ### Queue Status
+
 ```bash
 docker exec dam-redis redis-cli LLEN bull:asset-processing:wait
 ```
 
 ### Logs
+
 ```bash
 # All services
 docker-compose logs -f
@@ -233,6 +245,7 @@ docker-compose logs -f worker
 ```
 
 ### BullMQ Dashboard
+
 Access at http://localhost:3002 for queue monitoring.
 
 ## 🔐 Security
@@ -252,11 +265,13 @@ Before deploying to production:
 ### Horizontal Scaling
 
 **Scale API:**
+
 ```bash
 docker service scale dam_api=4
 ```
 
 **Scale Workers:**
+
 ```bash
 docker service scale dam_worker=10
 ```
@@ -275,12 +290,14 @@ docker service scale dam_worker=10
 ## 🗄 Backup & Restore
 
 ### Backup
+
 ```bash
 cd backend
 ./scripts/backup.sh
 ```
 
 ### Restore
+
 ```bash
 tar -xzf backups/dam_backup_*.tar.gz
 # Follow restore instructions in DEPLOYMENT.md
@@ -289,18 +306,21 @@ tar -xzf backups/dam_backup_*.tar.gz
 ## 🐛 Troubleshooting
 
 ### API not responding
+
 ```bash
 docker-compose ps
 docker-compose logs api
 ```
 
 ### Workers not processing
+
 ```bash
 docker-compose logs worker
 docker-compose restart worker
 ```
 
 ### Upload fails
+
 ```bash
 # Check MinIO
 curl http://localhost:9000/minio/health/live
@@ -326,6 +346,7 @@ MIT License - see LICENSE file for details
 ## 🆘 Support
 
 For issues and questions:
+
 1. Check [DEPLOYMENT.md](DEPLOYMENT.md)
 2. Review [backend/README.md](backend/README.md)
 3. Check logs: `docker-compose logs`

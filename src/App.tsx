@@ -1,45 +1,49 @@
-import { useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Dashboard } from './components/Dashboard';
 import { AssetGallery } from './components/AssetGallery';
 import { UploadZone } from './components/UploadZone';
 import { Header } from './components/Header';
+import { AuthForm } from './components/AuthForm';
 import { toast, Toaster } from 'sonner';
 import { useAssets } from './hooks/useAssets';
 import { useUpload } from './hooks/useUpload';
+import { useAuth } from './hooks/useAuth';
 import * as api from './services/api';
 
 export default function App() {
-  const [activeView, setActiveView] = useState<'dashboard' | 'assets' | 'upload'>('dashboard');
-  
+  type ActiveView = 'dashboard' | 'assets' | 'upload';
+  const [activeView, setActiveView] = useState('dashboard' as ActiveView);
+  const { isAuthenticated, loading: authLoading } = useAuth();
+
   const { assets, loading, error, loadAssets, updateAsset, removeAsset } = useAssets();
   const { uploadJobs, startUpload } = useUpload(() => {
     // Reload assets when upload completes
     loadAssets();
   });
 
-  // Load assets on mount
+  // Load assets on mount (and when auth state changes, so authenticated calls get token)
   useEffect(() => {
     loadAssets();
-  }, [loadAssets]);
+  }, [loadAssets, isAuthenticated]);
 
   const handleUpload = async (files: File[]) => {
     try {
       await startUpload(files);
-    } catch (err) {
+    } catch (_err) {
       // Error handling is done in the hook
     }
   };
 
   const handleDownload = async (assetId: string) => {
     try {
-      const asset = assets.find(a => a.id === assetId);
+      const asset = assets.find((a) => a.id === assetId);
       if (!asset) return;
-      
+
       await api.downloadAsset(assetId, asset.name);
-      
+
       // Update local state to increment download count
       updateAsset(assetId, { downloads: asset.downloads + 1 });
-      
+
       toast.success('Download started');
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Download failed';
@@ -60,15 +64,28 @@ export default function App() {
     }
   };
 
+  if (authLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-slate-50">
+        <div className="text-center text-slate-600">Loading...</div>
+      </div>
+    );
+  }
+
+  if (!isAuthenticated) {
+    return (
+      <>
+        <Toaster position="top-right" richColors />
+        <AuthForm onAuthenticated={() => setActiveView('dashboard')} />
+      </>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-slate-50">
       <Toaster position="top-right" richColors />
-      <Header 
-        activeView={activeView} 
-        onViewChange={setActiveView}
-        uploadJobs={uploadJobs}
-      />
-      
+      <Header activeView={activeView} onViewChange={setActiveView} uploadJobs={uploadJobs} />
+
       <main className="max-w-[1600px] mx-auto px-6 py-8">
         {loading && assets.length === 0 ? (
           <div className="flex items-center justify-center py-20">
@@ -95,21 +112,13 @@ export default function App() {
           </div>
         ) : (
           <>
-            {activeView === 'dashboard' && (
-              <Dashboard assets={assets} />
-            )}
-            
+            {activeView === 'dashboard' && <Dashboard assets={assets} />}
+
             {activeView === 'assets' && (
-              <AssetGallery 
-                assets={assets}
-                onDownload={handleDownload}
-                onDelete={handleDelete}
-              />
+              <AssetGallery assets={assets} onDownload={handleDownload} onDelete={handleDelete} />
             )}
-            
-            {activeView === 'upload' && (
-              <UploadZone onUpload={handleUpload} />
-            )}
+
+            {activeView === 'upload' && <UploadZone onUpload={handleUpload} />}
           </>
         )}
       </main>

@@ -15,7 +15,7 @@ export const mockAssets: Asset[] = [
     metadata: {
       width: 1920,
       height: 1080,
-    }
+    },
   },
   {
     id: '2',
@@ -32,7 +32,7 @@ export const mockAssets: Asset[] = [
       width: 1920,
       height: 1080,
       duration: 45,
-    }
+    },
   },
   {
     id: '3',
@@ -48,7 +48,7 @@ export const mockAssets: Asset[] = [
     metadata: {
       width: 2400,
       height: 1600,
-    }
+    },
   },
   {
     id: '4',
@@ -65,7 +65,7 @@ export const mockAssets: Asset[] = [
       width: 1920,
       height: 1080,
       duration: 180,
-    }
+    },
   },
   {
     id: '5',
@@ -81,7 +81,7 @@ export const mockAssets: Asset[] = [
     metadata: {
       width: 1080,
       height: 1080,
-    }
+    },
   },
   {
     id: '6',
@@ -97,7 +97,7 @@ export const mockAssets: Asset[] = [
     metadata: {
       width: 2560,
       height: 1440,
-    }
+    },
   },
   {
     id: '7',
@@ -114,7 +114,7 @@ export const mockAssets: Asset[] = [
       width: 1920,
       height: 1080,
       duration: 90,
-    }
+    },
   },
   {
     id: '8',
@@ -130,7 +130,7 @@ export const mockAssets: Asset[] = [
     metadata: {
       width: 1920,
       height: 1280,
-    }
+    },
   },
   {
     id: '9',
@@ -147,7 +147,7 @@ export const mockAssets: Asset[] = [
       width: 1920,
       height: 1080,
       duration: 240,
-    }
+    },
   },
   {
     id: '10',
@@ -163,7 +163,7 @@ export const mockAssets: Asset[] = [
     metadata: {
       width: 1200,
       height: 600,
-    }
+    },
   },
   {
     id: '11',
@@ -180,7 +180,7 @@ export const mockAssets: Asset[] = [
       width: 1080,
       height: 1920,
       duration: 30,
-    }
+    },
   },
   {
     id: '12',
@@ -196,6 +196,6 @@ export const mockAssets: Asset[] = [
     metadata: {
       width: 2000,
       height: 1000,
-    }
-  }
+    },
+  },
 ];

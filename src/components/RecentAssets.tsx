@@ -24,7 +24,7 @@ export function RecentAssets({ assets }: RecentAssetsProps) {
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-100">
-            {assets.map(asset => (
+            {assets.map((asset) => (
               <tr key={asset.id} className="hover:bg-slate-50 transition-colors">
                 <td className="px-6 py-4">
                   <div className="flex items-center gap-3">
@@ -44,12 +44,8 @@ export function RecentAssets({ assets }: RecentAssetsProps) {
                     <span className="text-slate-700 capitalize">{asset.type}</span>
                   </div>
                 </td>
-                <td className="px-6 py-4 text-slate-700">
-                  {formatBytes(asset.size)}
-                </td>
-                <td className="px-6 py-4 text-slate-700">
-                  {asset.downloads}
-                </td>
+                <td className="px-6 py-4 text-slate-700">{formatBytes(asset.size)}</td>
+                <td className="px-6 py-4 text-slate-700">{asset.downloads}</td>
                 <td className="px-6 py-4">
                   <div className="flex items-center gap-2 text-slate-500">
                     <Clock className="w-4 h-4" />
@@ -70,17 +66,17 @@ function formatBytes(bytes: number): string {
   const k = 1024;
   const sizes = ['Bytes', 'KB', 'MB', 'GB'];
   const i = Math.floor(Math.log(bytes) / Math.log(k));
-  return Math.round(bytes / Math.pow(k, i) * 100) / 100 + ' ' + sizes[i];
+  return Math.round((bytes / Math.pow(k, i)) * 100) / 100 + ' ' + sizes[i];
 }
 
 function formatDate(date: Date): string {
   const now = new Date();
   const diff = now.getTime() - date.getTime();
   const days = Math.floor(diff / (1000 * 60 * 60 * 24));
-  
+
   if (days === 0) return 'Today';
   if (days === 1) return 'Yesterday';
   if (days < 7) return `${days} days ago`;
-  
+
   return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
 }

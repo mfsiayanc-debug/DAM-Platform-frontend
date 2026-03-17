@@ -21,16 +21,16 @@ export function validateFiles(files: File[]): FileValidationResult {
   if (files.length > config.upload.maxFiles) {
     return {
       valid: [],
-      invalid: files.map(file => ({
+      invalid: files.map((file) => ({
         file,
-        error: `Too many files. Maximum ${config.upload.maxFiles} files allowed.`
-      }))
+        error: `Too many files. Maximum ${config.upload.maxFiles} files allowed.`,
+      })),
     };
   }
 
   for (const file of files) {
     const error = validateSingleFile(file);
-    
+
     if (error) {
       invalid.push({ file, error });
     } else {
@@ -55,7 +55,7 @@ function validateSingleFile(file: File): string | null {
   const allowedTypes = [
     ...config.upload.allowedTypes.image,
     ...config.upload.allowedTypes.video,
-    ...config.upload.allowedTypes.document
+    ...config.upload.allowedTypes.document,
   ];
 
   if (!allowedTypes.includes(file.type)) {
@@ -73,7 +73,7 @@ export function formatFileSize(bytes: number): string {
   const k = 1024;
   const sizes = ['Bytes', 'KB', 'MB', 'GB'];
   const i = Math.floor(Math.log(bytes) / Math.log(k));
-  return Math.round(bytes / Math.pow(k, i) * 100) / 100 + ' ' + sizes[i];
+  return Math.round((bytes / Math.pow(k, i)) * 100) / 100 + ' ' + sizes[i];
 }
 
 /**
@@ -92,8 +92,8 @@ export function isFileTypeAllowed(mimeType: string): boolean {
   const allowedTypes = [
     ...config.upload.allowedTypes.image,
     ...config.upload.allowedTypes.video,
-    ...config.upload.allowedTypes.document
+    ...config.upload.allowedTypes.document,
   ];
-  
+
   return allowedTypes.includes(mimeType);
 }

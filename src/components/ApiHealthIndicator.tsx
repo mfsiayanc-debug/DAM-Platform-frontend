@@ -4,26 +4,22 @@ import * as api from '../services/api';
 
 export function ApiHealthIndicator() {
   const [isHealthy, setIsHealthy] = useState<boolean | null>(null);
-  const [checking, setChecking] = useState(false);
 
   useEffect(() => {
     checkHealth();
-    
+
     // Check health every 30 seconds
     const interval = setInterval(checkHealth, 30000);
-    
+
     return () => clearInterval(interval);
   }, []);
 
   const checkHealth = async () => {
-    setChecking(true);
     try {
       const healthy = await api.checkHealth();
       setIsHealthy(healthy);
-    } catch (err) {
+    } catch (_err) {
       setIsHealthy(false);
-    } finally {
-      setChecking(false);
     }
   };
 

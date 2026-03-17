@@ -1,7 +1,5 @@
+# Digital Asset Management Platform
 
-  # Digital Asset Management Platform
+Run `npm i` to install the dependencies.
 
-  Run `npm i` to install the dependencies.
-
-  Run `npm run dev` to start the development server.
-  
+Run `npm run dev` to start the development server.

@@ -16,13 +16,11 @@ export function StatsCard({ title, value, icon: Icon, trend, trendUp }: StatsCar
           <Icon className="w-6 h-6 text-blue-600" />
         </div>
       </div>
-      
+
       <div>
         <p className="text-slate-600 mb-1">{title}</p>
         <p className="text-slate-900 mb-2">{value}</p>
-        <p className={`${trendUp ? 'text-green-600' : 'text-slate-500'}`}>
-          {trend}
-        </p>
+        <p className={`${trendUp ? 'text-green-600' : 'text-slate-500'}`}>{trend}</p>
       </div>
     </div>
   );

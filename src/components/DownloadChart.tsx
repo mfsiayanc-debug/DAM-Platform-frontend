@@ -7,9 +7,7 @@ interface DownloadChartProps {
 
 export function DownloadChart({ assets }: DownloadChartProps) {
   // Get top 5 most downloaded assets
-  const topAssets = [...assets]
-    .sort((a, b) => b.downloads - a.downloads)
-    .slice(0, 5);
+  const topAssets = [...assets].sort((a, b) => b.downloads - a.downloads).slice(0, 5);
 
   const maxDownloads = topAssets[0]?.downloads || 1;
 
@@ -23,7 +21,7 @@ export function DownloadChart({ assets }: DownloadChartProps) {
       <div className="space-y-4">
         {topAssets.map((asset, index) => {
           const percentage = (asset.downloads / maxDownloads) * 100;
-          
+
           return (
             <div key={asset.id}>
               <div className="flex items-center justify-between mb-2">
