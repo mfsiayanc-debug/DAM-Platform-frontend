@@ -1,8 +1,11 @@
 import { MockDataStore, type MockAsset } from './mockData';
+import { Upload } from 'tus-js-client';
+import { config } from '../config';
 
-const API_BASE_URL = typeof import.meta !== 'undefined' && import.meta.env?.VITE_API_URL 
-  ? import.meta.env.VITE_API_URL 
-  : 'http://localhost:3001/api';
+const API_BASE_URL =
+  typeof import.meta !== 'undefined' && import.meta.env?.VITE_API_URL
+    ? import.meta.env.VITE_API_URL
+    : 'http://localhost:3001/api';
 
 // Enable mock mode when API is not available
 const USE_MOCK_DATA = false;
@@ -39,19 +42,79 @@ export interface ApiStats {
   topDownloaded: ApiAsset[];
 }
 
+let authToken: string | null = null;
+
+export function setAuthToken(token: string | null) {
+  authToken = token;
+}
+
+function authHeaders() {
+  return authToken ? { Authorization: `Bearer ${authToken}` } : {};
+}
+
+// Auth
+export async function signup(
+  email: string,
+  password: string,
+): Promise<{
+  user: { id: string; email: string; role: string; createdAt: string };
+  token: string;
+}> {
+  const response = await fetch(`${API_BASE_URL}/auth/signup`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({ email, password }),
+  });
+
+  if (!response.ok) {
+    const error = await response.json().catch(() => ({ error: 'Signup failed' }));
+    throw new Error(error.error || error.message || 'Signup failed');
+  }
+
+  return response.json();
+}
+
+export async function login(
+  email: string,
+  password: string,
+): Promise<{
+  user: { id: string; email: string; role: string; createdAt: string };
+  token: string;
+}> {
+  const response = await fetch(`${API_BASE_URL}/auth/login`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({ email, password }),
+  });
+
+  if (!response.ok) {
+    const error = await response.json().catch(() => ({ error: 'Login failed' }));
+    throw new Error(error.error || error.message || 'Login failed');
+  }
+
+  return response.json();
+}
+
 // Upload multiple assets
 export async function uploadAssets(files: File[]): Promise<{ assets: ApiAsset[] }> {
   if (USE_MOCK_DATA) {
-    const uploads = await Promise.all(files.map(file => MockDataStore.uploadAsset(file)));
+    const uploads = await Promise.all(files.map((file) => MockDataStore.uploadAsset(file)));
     return { assets: uploads.map(mockAssetToApiAsset) };
   }
 
   const formData = new FormData();
-  files.forEach(file => formData.append('files', file));
+  files.forEach((file) => formData.append('files', file));
 
   const response = await fetch(`${API_BASE_URL}/assets/upload`, {
     method: 'POST',
     body: formData,
+    headers: {
+      ...authHeaders(),
+    },
   });
 
   if (!response.ok) {
@@ -62,33 +125,100 @@ export async function uploadAssets(files: File[]): Promise<{ assets: ApiAsset[] 
   return response.json();
 }
 
+export async function uploadAssetResumable(
+  file: File,
+  onProgress?: (bytesUploaded: number, bytesTotal: number) => void,
+): Promise<{ assetId: string }> {
+  if (USE_MOCK_DATA) {
+    const asset = await MockDataStore.uploadAsset(file);
+    onProgress?.(file.size, file.size);
+    return { assetId: asset.id };
+  }
+
+  return new Promise((resolve, reject) => {
+    const upload = new Upload(file, {
+      endpoint: `${API_BASE_URL}/uploads/resumable`,
+      chunkSize: config.upload.chunkSize,
+      retryDelays: config.upload.retryDelays,
+      removeFingerprintOnSuccess: true,
+      metadata: {
+        filename: file.name,
+        filetype: file.type,
+      },
+      headers: {
+        ...authHeaders(),
+      },
+      onProgress: (bytesUploaded, bytesTotal) => {
+        onProgress?.(bytesUploaded, bytesTotal);
+      },
+      onError: (error) => {
+        reject(error);
+      },
+      onSuccess: ({ lastResponse }) => {
+        const assetId =
+          lastResponse.getHeader('Upload-Completed-Asset-Id') ||
+          upload.url?.split('/').filter(Boolean).pop();
+
+        if (!assetId) {
+          reject(new Error('Upload finished but no asset id was returned'));
+          return;
+        }
+
+        resolve({ assetId });
+      },
+      onShouldRetry: (error, retryAttempt) => {
+        const status = error.originalResponse?.getStatus();
+
+        if (status && status >= 400 && status < 500 && status !== 409 && status !== 423) {
+          return false;
+        }
+
+        return retryAttempt < config.upload.retryDelays.length;
+      },
+    });
+
+    upload
+      .findPreviousUploads()
+      .then((previousUploads) => {
+        if (previousUploads.length > 0) {
+          upload.resumeFromPreviousUpload(previousUploads[0]);
+        }
+
+        upload.start();
+      })
+      .catch(reject);
+  });
+}
+
 // Get all assets with filters
-export async function getAssets(params: {
-  type?: string;
-  search?: string;
-  sortBy?: string;
-  order?: string;
-  limit?: number;
-  offset?: number;
-} = {}): Promise<{ assets: ApiAsset[]; pagination: { total: number; limit: number; offset: number } }> {
+export async function getAssets(
+  params: {
+    type?: string;
+    search?: string;
+    sortBy?: string;
+    order?: string;
+    limit?: number;
+    offset?: number;
+  } = {},
+): Promise<{ assets: ApiAsset[]; pagination: { total: number; limit: number; offset: number } }> {
   if (USE_MOCK_DATA) {
     const assets = MockDataStore.getAssets({
       type: params.type,
-      search: params.search
+      search: params.search,
     });
-    
+
     const limit = params.limit || 50;
     const offset = params.offset || 0;
     const paginatedAssets = assets.slice(offset, offset + limit);
-    
+
     return {
       assets: paginatedAssets.map(mockAssetToApiAsset),
-      pagination: { total: assets.length, limit, offset }
+      pagination: { total: assets.length, limit, offset },
     };
   }
 
   const queryParams = new URLSearchParams();
-  
+
   Object.entries(params).forEach(([key, value]) => {
     if (value !== undefined && value !== null) {
       queryParams.append(key, String(value));
@@ -96,7 +226,7 @@ export async function getAssets(params: {
   });
 
   const response = await fetch(`${API_BASE_URL}/assets?${queryParams}`);
-  
+
   if (!response.ok) {
     throw new Error('Failed to fetch assets');
   }
@@ -113,7 +243,7 @@ export async function getAssetById(assetId: string): Promise<ApiAsset> {
   }
 
   const response = await fetch(`${API_BASE_URL}/assets/${assetId}`);
-  
+
   if (!response.ok) {
     throw new Error('Asset not found');
   }
@@ -134,7 +264,7 @@ export async function downloadAsset(assetId: string, fileName: string): Promise<
   }
 
   const response = await fetch(`${API_BASE_URL}/assets/${assetId}/download`);
-  
+
   if (!response.ok) {
     throw new Error('Download failed');
   }
@@ -160,6 +290,9 @@ export async function deleteAsset(assetId: string): Promise<void> {
 
   const response = await fetch(`${API_BASE_URL}/assets/${assetId}`, {
     method: 'DELETE',
+    headers: {
+      ...authHeaders(),
+    },
   });
 
   if (!response.ok) {
@@ -179,6 +312,7 @@ export async function updateAssetTags(assetId: string, tags: string[]): Promise<
     method: 'PATCH',
     headers: {
       'Content-Type': 'application/json',
+      ...authHeaders(),
     },
     body: JSON.stringify({ tags }),
   });
@@ -199,19 +333,19 @@ export async function getStats(): Promise<ApiStats> {
       .sort((a, b) => b.downloadCount - a.downloadCount)
       .slice(0, 5)
       .map(mockAssetToApiAsset);
-    
+
     return {
       totalAssets: stats.totalAssets,
       totalDownloads: stats.recentDownloads,
       totalStorage: stats.totalStorage,
       assetsThisMonth: Math.floor(stats.totalAssets * 0.3), // Mock: 30% uploaded this month
       assetsByType: stats.assetsByType,
-      topDownloaded
+      topDownloaded,
     };
   }
 
   const response = await fetch(`${API_BASE_URL}/stats`);
-  
+
   if (!response.ok) {
     throw new Error('Failed to fetch stats');
   }
@@ -243,8 +377,8 @@ export function convertApiAsset(apiAsset: ApiAsset) {
     size: apiAsset.size,
     mimeType: apiAsset.mimeType,
     uploadedAt: new Date(apiAsset.uploadedAt),
-    thumbnailUrl: apiAsset.thumbnailUrl.startsWith('http') 
-      ? apiAsset.thumbnailUrl 
+    thumbnailUrl: apiAsset.thumbnailUrl.startsWith('http')
+      ? apiAsset.thumbnailUrl
       : `${API_BASE_URL.replace('/api', '')}${apiAsset.thumbnailUrl}`,
     url: apiAsset.url.startsWith('http')
       ? apiAsset.url
@@ -275,8 +409,8 @@ function mockAssetToApiAsset(asset: MockAsset): ApiAsset {
     metadata: {
       width: asset.width,
       height: asset.height,
-      duration: asset.duration
+      duration: asset.duration,
     },
-    status: asset.status
+    status: asset.status,
   };
 }

@@ -8,7 +8,7 @@ interface AssetTypeChartProps {
 
 export function AssetTypeChart({ imageCount, videoCount, documentCount }: AssetTypeChartProps) {
   const total = imageCount + videoCount + documentCount;
-  
+
   const imagePercent = (imageCount / total) * 100;
   const videoPercent = (videoCount / total) * 100;
   const documentPercent = (documentCount / total) * 100;
@@ -16,7 +16,7 @@ export function AssetTypeChart({ imageCount, videoCount, documentCount }: AssetT
   return (
     <div className="bg-white rounded-xl p-6 border border-slate-200">
       <h3 className="text-slate-900 mb-6">Asset Distribution</h3>
-      
+
       <div className="space-y-4">
         <div>
           <div className="flex items-center justify-between mb-2">

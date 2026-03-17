@@ -34,18 +34,22 @@ export function Dashboard({ assets }: DashboardProps) {
 
   // Use API stats if available, otherwise calculate from assets
   const totalAssets = stats?.totalAssets ?? assets.length;
-  const totalDownloads = stats?.totalDownloads ?? assets.reduce((sum, asset) => sum + asset.downloads, 0);
+  const totalDownloads =
+    stats?.totalDownloads ?? assets.reduce((sum, asset) => sum + asset.downloads, 0);
   const totalStorage = stats?.totalStorage ?? assets.reduce((sum, asset) => sum + asset.size, 0);
-  const assetsThisMonth = stats?.assetsThisMonth ?? (() => {
-    const thisMonth = new Date();
-    thisMonth.setDate(1);
-    thisMonth.setHours(0, 0, 0, 0);
-    return assets.filter(asset => asset.uploadedAt >= thisMonth).length;
-  })();
+  const assetsThisMonth =
+    stats?.assetsThisMonth ??
+    (() => {
+      const thisMonth = new Date();
+      thisMonth.setDate(1);
+      thisMonth.setHours(0, 0, 0, 0);
+      return assets.filter((asset) => asset.uploadedAt >= thisMonth).length;
+    })();
 
-  const imageCount = stats?.assetsByType?.image ?? assets.filter(a => a.type === 'image').length;
-  const videoCount = stats?.assetsByType?.video ?? assets.filter(a => a.type === 'video').length;
-  const documentCount = stats?.assetsByType?.document ?? assets.filter(a => a.type === 'document').length;
+  const imageCount = stats?.assetsByType?.image ?? assets.filter((a) => a.type === 'image').length;
+  const videoCount = stats?.assetsByType?.video ?? assets.filter((a) => a.type === 'video').length;
+  const documentCount =
+    stats?.assetsByType?.document ?? assets.filter((a) => a.type === 'document').length;
 
   if (loading) {
     return (
@@ -62,7 +66,7 @@ export function Dashboard({ assets }: DashboardProps) {
     <div className="space-y-6">
       <div>
         <h2 className="text-slate-900 mb-6">Dashboard Overview</h2>
-        
+
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
           <StatsCard
             title="Total Assets"
@@ -71,7 +75,7 @@ export function Dashboard({ assets }: DashboardProps) {
             trend={`+${assetsThisMonth} this month`}
             trendUp={true}
           />
-          
+
           <StatsCard
             title="Total Downloads"
             value={totalDownloads.toString()}
@@ -79,7 +83,7 @@ export function Dashboard({ assets }: DashboardProps) {
             trend="+12% from last month"
             trendUp={true}
           />
-          
+
           <StatsCard
             title="Storage Used"
             value={formatBytes(totalStorage)}
@@ -87,7 +91,7 @@ export function Dashboard({ assets }: DashboardProps) {
             trend={`${Math.round((totalStorage / (100 * 1024 * 1024)) * 100)}% of 100 GB`}
             trendUp={false}
           />
-          
+
           <StatsCard
             title="Avg Downloads"
             value={Math.round(totalDownloads / totalAssets).toString()}
@@ -99,12 +103,12 @@ export function Dashboard({ assets }: DashboardProps) {
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <AssetTypeChart 
+        <AssetTypeChart
           imageCount={imageCount}
           videoCount={videoCount}
           documentCount={documentCount}
         />
-        
+
         <DownloadChart assets={assets} />
       </div>
 
@@ -118,5 +122,5 @@ function formatBytes(bytes: number): string {
   const k = 1024;
   const sizes = ['Bytes', 'KB', 'MB', 'GB'];
   const i = Math.floor(Math.log(bytes) / Math.log(k));
-  return Math.round(bytes / Math.pow(k, i) * 100) / 100 + ' ' + sizes[i];
+  return Math.round((bytes / Math.pow(k, i)) * 100) / 100 + ' ' + sizes[i];
 }

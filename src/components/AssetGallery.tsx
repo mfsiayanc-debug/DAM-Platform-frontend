@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Search, Filter, Grid3x3, List, SortDesc } from 'lucide-react';
+import { Search, Filter, Grid3x3, List } from 'lucide-react';
 import { Asset } from '../types';
 import { AssetCard } from './AssetCard';
 import { AssetModal } from './AssetModal';
@@ -18,9 +18,10 @@ export function AssetGallery({ assets, onDownload, onDelete }: AssetGalleryProps
   const [selectedAsset, setSelectedAsset] = useState<Asset | null>(null);
 
   // Filter assets
-  let filteredAssets = assets.filter(asset => {
-    const matchesSearch = asset.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                         asset.tags.some(tag => tag.toLowerCase().includes(searchQuery.toLowerCase()));
+  let filteredAssets = assets.filter((asset) => {
+    const matchesSearch =
+      asset.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      asset.tags.some((tag) => tag.toLowerCase().includes(searchQuery.toLowerCase()));
     const matchesType = typeFilter === 'all' || asset.type === typeFilter;
     return matchesSearch && matchesType;
   });
@@ -107,12 +108,8 @@ export function AssetGallery({ assets, onDownload, onDelete }: AssetGalleryProps
 
       {viewMode === 'grid' ? (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-          {filteredAssets.map(asset => (
-            <AssetCard
-              key={asset.id}
-              asset={asset}
-              onClick={() => setSelectedAsset(asset)}
-            />
+          {filteredAssets.map((asset) => (
+            <AssetCard key={asset.id} asset={asset} onClick={() => setSelectedAsset(asset)} />
           ))}
         </div>
       ) : (
@@ -128,7 +125,7 @@ export function AssetGallery({ assets, onDownload, onDelete }: AssetGalleryProps
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
-              {filteredAssets.map(asset => (
+              {filteredAssets.map((asset) => (
                 <tr
                   key={asset.id}
                   onClick={() => setSelectedAsset(asset)}
@@ -186,13 +183,13 @@ function formatBytes(bytes: number): string {
   const k = 1024;
   const sizes = ['Bytes', 'KB', 'MB', 'GB'];
   const i = Math.floor(Math.log(bytes) / Math.log(k));
-  return Math.round(bytes / Math.pow(k, i) * 100) / 100 + ' ' + sizes[i];
+  return Math.round((bytes / Math.pow(k, i)) * 100) / 100 + ' ' + sizes[i];
 }
 
 function formatDate(date: Date): string {
-  return date.toLocaleDateString('en-US', { 
-    month: 'short', 
+  return date.toLocaleDateString('en-US', {
+    month: 'short',
     day: 'numeric',
-    year: 'numeric'
+    year: 'numeric',
   });
 }

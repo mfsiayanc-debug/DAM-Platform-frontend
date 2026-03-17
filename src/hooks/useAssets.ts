@@ -12,8 +12,10 @@ export function useAssets() {
     try {
       setLoading(true);
       setError(null);
-      const response = await api.getAssets(params || { limit: 100, sortBy: 'uploadedAt', order: 'desc' });
-      const convertedAssets = response.assets.map(apiAsset => api.convertApiAsset(apiAsset));
+      const response = await api.getAssets(
+        params || { limit: 100, sortBy: 'uploadedAt', order: 'desc' },
+      );
+      const convertedAssets = response.assets.map((apiAsset) => api.convertApiAsset(apiAsset));
       setAssets(convertedAssets);
       return convertedAssets;
     } catch (err) {
@@ -28,17 +30,17 @@ export function useAssets() {
   }, []);
 
   const addAssets = useCallback((newAssets: Asset[]) => {
-    setAssets(prev => [...newAssets, ...prev]);
+    setAssets((prev) => [...newAssets, ...prev]);
   }, []);
 
   const updateAsset = useCallback((assetId: string, updates: Partial<Asset>) => {
-    setAssets(prev => prev.map(asset => 
-      asset.id === assetId ? { ...asset, ...updates } : asset
-    ));
+    setAssets((prev) =>
+      prev.map((asset) => (asset.id === assetId ? { ...asset, ...updates } : asset)),
+    );
   }, []);
 
   const removeAsset = useCallback((assetId: string) => {
-    setAssets(prev => prev.filter(asset => asset.id !== assetId));
+    setAssets((prev) => prev.filter((asset) => asset.id !== assetId));
   }, []);
 
   return {
