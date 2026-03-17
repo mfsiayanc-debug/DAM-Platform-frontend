@@ -10,6 +10,8 @@ export const config = {
   upload: {
     maxFileSize: 100 * 1024 * 1024, // 100MB
     maxFiles: 10,
+    chunkSize: 5 * 1024 * 1024, // 5MB
+    retryDelays: [0, 1000, 3000, 5000],
     allowedTypes: {
       image: ['image/jpeg', 'image/png', 'image/gif', 'image/webp'],
       video: ['video/mp4', 'video/mpeg', 'video/quicktime'],

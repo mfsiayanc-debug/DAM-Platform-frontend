@@ -59,7 +59,6 @@ export function useUpload(onComplete?: (assetIds: string[]) => void) {
 
   const startUpload = useCallback(
     async (files: File[]) => {
-      // Create upload jobs
       const newJobs: UploadJob[] = files.map((file, index) => ({
         id: `job-${Date.now()}-${index}`,
         fileName: file.name,
@@ -72,50 +71,74 @@ export function useUpload(onComplete?: (assetIds: string[]) => void) {
 
       setUploadJobs((prev) => [...prev, ...newJobs]);
 
-      try {
-        // Upload files to backend
-        const response = await api.uploadAssets(files);
+      const successfulAssetIds: string[] = [];
+      const successfulJobs: UploadJob[] = [];
+      const failedJobs: UploadJob[] = [];
 
-        // Update jobs to processing status
-        newJobs.forEach((job) => {
-          setUploadJobs((prev) =>
-            prev.map((j) =>
-              j.id === job.id ? { ...j, status: 'processing' as const, progress: 100 } : j,
-            ),
-          );
-        });
+      await Promise.all(
+        files.map(async (file, index) => {
+          const job = newJobs[index];
 
-        // Poll for asset processing completion
-        const assetIds = response.assets.map((a) => a.id);
-        pollForAssetProcessing(assetIds, newJobs);
+          try {
+            const response = await api.uploadAssetResumable(file, (bytesUploaded, bytesTotal) => {
+              const progress = bytesTotal > 0 ? (bytesUploaded / bytesTotal) * 100 : 0;
 
+              setUploadJobs((prev) =>
+                prev.map((currentJob) =>
+                  currentJob.id === job.id ? { ...currentJob, progress } : currentJob,
+                ),
+              );
+            });
+
+            successfulAssetIds.push(response.assetId);
+            successfulJobs.push(job);
+
+            setUploadJobs((prev) =>
+              prev.map((currentJob) =>
+                currentJob.id === job.id
+                  ? { ...currentJob, status: 'processing' as const, progress: 100 }
+                  : currentJob,
+              ),
+            );
+          } catch (err) {
+            const errorMessage = err instanceof Error ? err.message : 'Upload failed';
+            failedJobs.push(job);
+
+            setUploadJobs((prev) =>
+              prev.map((currentJob) =>
+                currentJob.id === job.id
+                  ? { ...currentJob, status: 'failed' as const, error: errorMessage }
+                  : currentJob,
+              ),
+            );
+
+            console.error(`Upload error for ${file.name}:`, err);
+          }
+        }),
+      );
+
+      if (successfulAssetIds.length > 0) {
+        pollForAssetProcessing(successfulAssetIds, successfulJobs);
         toast.success(
-          `Successfully uploaded ${files.length} ${files.length === 1 ? 'file' : 'files'}`,
+          `Successfully uploaded ${successfulAssetIds.length} ${successfulAssetIds.length === 1 ? 'file' : 'files'}`,
+        );
+      }
+
+      if (failedJobs.length > 0) {
+        toast.error(
+          `${failedJobs.length} ${failedJobs.length === 1 ? 'upload failed' : 'uploads failed'}`,
         );
 
-        return assetIds;
-      } catch (err) {
-        const errorMessage = err instanceof Error ? err.message : 'Upload failed';
-
-        // Mark all jobs as failed
-        newJobs.forEach((job) => {
-          setUploadJobs((prev) =>
-            prev.map((j) =>
-              j.id === job.id ? { ...j, status: 'failed' as const, error: errorMessage } : j,
-            ),
-          );
-        });
-
-        toast.error(errorMessage);
-        console.error('Upload error:', err);
-
-        // Remove failed jobs after delay
         setTimeout(() => {
-          setUploadJobs((prev) => prev.filter((j) => !newJobs.find((nj) => nj.id === j.id)));
+          setUploadJobs((prev) => prev.filter((j) => !failedJobs.find((job) => job.id === j.id)));
         }, config.ui.failedJobRemovalDelay);
-
-        throw err;
       }
+
+      if (successfulAssetIds.length === 0) {
+        throw new Error('Upload failed');
+      }
+
+      return successfulAssetIds;
     },
     [pollForAssetProcessing],
   );

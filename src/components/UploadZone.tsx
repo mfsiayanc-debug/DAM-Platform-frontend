@@ -1,7 +1,7 @@
 import { useRef, useState } from 'react';
 import { Upload, FileImage, FileVideo, FileText, X } from 'lucide-react';
 import { validateFiles, formatFileSize } from '../utils/fileValidation';
-import { toast } from 'sonner@2.0.3';
+import { toast } from 'sonner';
 
 interface UploadZoneProps {
   onUpload: (files: File[]) => void;
@@ -98,7 +98,9 @@ export function UploadZone({ onUpload }: UploadZoneProps) {
 
           <div>
             <p className="text-slate-900 mb-1">Drop files here or click to browse</p>
-            <p className="text-slate-500">Supports images, videos, and documents up to 100MB</p>
+            <p className="text-slate-500">
+              Supports resumable uploads for images, videos, and documents up to 100MB
+            </p>
           </div>
         </div>
 

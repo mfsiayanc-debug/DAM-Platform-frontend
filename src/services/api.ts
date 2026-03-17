@@ -1,4 +1,6 @@
 import { MockDataStore, type MockAsset } from './mockData';
+import { Upload } from 'tus-js-client';
+import { config } from '../config';
 
 const API_BASE_URL =
   typeof import.meta !== 'undefined' && import.meta.env?.VITE_API_URL
@@ -121,6 +123,71 @@ export async function uploadAssets(files: File[]): Promise<{ assets: ApiAsset[] 
   }
 
   return response.json();
+}
+
+export async function uploadAssetResumable(
+  file: File,
+  onProgress?: (bytesUploaded: number, bytesTotal: number) => void,
+): Promise<{ assetId: string }> {
+  if (USE_MOCK_DATA) {
+    const asset = await MockDataStore.uploadAsset(file);
+    onProgress?.(file.size, file.size);
+    return { assetId: asset.id };
+  }
+
+  return new Promise((resolve, reject) => {
+    const upload = new Upload(file, {
+      endpoint: `${API_BASE_URL}/uploads/resumable`,
+      chunkSize: config.upload.chunkSize,
+      retryDelays: config.upload.retryDelays,
+      removeFingerprintOnSuccess: true,
+      metadata: {
+        filename: file.name,
+        filetype: file.type,
+      },
+      headers: {
+        ...authHeaders(),
+      },
+      onProgress: (bytesUploaded, bytesTotal) => {
+        onProgress?.(bytesUploaded, bytesTotal);
+      },
+      onError: (error) => {
+        reject(error);
+      },
+      onSuccess: ({ lastResponse }) => {
+        const assetId =
+          lastResponse.getHeader('Upload-Completed-Asset-Id') ||
+          upload.url?.split('/').filter(Boolean).pop();
+
+        if (!assetId) {
+          reject(new Error('Upload finished but no asset id was returned'));
+          return;
+        }
+
+        resolve({ assetId });
+      },
+      onShouldRetry: (error, retryAttempt) => {
+        const status = error.originalResponse?.getStatus();
+
+        if (status && status >= 400 && status < 500 && status !== 409 && status !== 423) {
+          return false;
+        }
+
+        return retryAttempt < config.upload.retryDelays.length;
+      },
+    });
+
+    upload
+      .findPreviousUploads()
+      .then((previousUploads) => {
+        if (previousUploads.length > 0) {
+          upload.resumeFromPreviousUpload(previousUploads[0]);
+        }
+
+        upload.start();
+      })
+      .catch(reject);
+  });
 }
 
 // Get all assets with filters
