@@ -48,8 +48,19 @@ export function setAuthToken(token: string | null) {
   authToken = token;
 }
 
+export function getAuthToken() {
+  return authToken;
+}
+
 function authHeaders() {
   return authToken ? { Authorization: `Bearer ${authToken}` } : {};
+}
+
+function withAuthToken(url: string) {
+  if (!authToken) return url;
+
+  const separator = url.includes('?') ? '&' : '?';
+  return `${url}${separator}token=${encodeURIComponent(authToken)}`;
 }
 
 // Auth
@@ -135,59 +146,72 @@ export async function uploadAssetResumable(
     return { assetId: asset.id };
   }
 
-  return new Promise((resolve, reject) => {
-    const upload = new Upload(file, {
-      endpoint: `${API_BASE_URL}/uploads/resumable`,
-      chunkSize: config.upload.chunkSize,
-      retryDelays: config.upload.retryDelays,
-      removeFingerprintOnSuccess: true,
-      metadata: {
-        filename: file.name,
-        filetype: file.type,
-      },
-      headers: {
-        ...authHeaders(),
-      },
-      onProgress: (bytesUploaded, bytesTotal) => {
-        onProgress?.(bytesUploaded, bytesTotal);
-      },
-      onError: (error) => {
-        reject(error);
-      },
-      onSuccess: ({ lastResponse }) => {
-        const assetId =
-          lastResponse.getHeader('Upload-Completed-Asset-Id') ||
-          upload.url?.split('/').filter(Boolean).pop();
+  try {
+    return await new Promise((resolve, reject) => {
+      const upload = new Upload(file, {
+        endpoint: `${API_BASE_URL}/uploads/resumable`,
+        chunkSize: config.upload.chunkSize,
+        retryDelays: config.upload.retryDelays,
+        removeFingerprintOnSuccess: true,
+        storeFingerprintForResuming: false,
+        metadata: {
+          filename: file.name,
+          filetype: file.type,
+        },
+        headers: {
+          ...authHeaders(),
+        },
+        onProgress: (bytesUploaded, bytesTotal) => {
+          onProgress?.(bytesUploaded, bytesTotal);
+        },
+        onError: (error) => {
+          reject(error);
+        },
+        onSuccess: ({ lastResponse }) => {
+          const assetId = lastResponse.getHeader('Upload-Completed-Asset-Id');
 
-        if (!assetId) {
-          reject(new Error('Upload finished but no asset id was returned'));
-          return;
-        }
+          if (!assetId) {
+            reject(new Error('Upload finished but no asset id was returned'));
+            return;
+          }
 
-        resolve({ assetId });
-      },
-      onShouldRetry: (error, retryAttempt) => {
-        const status = error.originalResponse?.getStatus();
+          resolve({ assetId });
+        },
+        onShouldRetry: (error, retryAttempt) => {
+          const status = error.originalResponse?.getStatus();
 
-        if (status && status >= 400 && status < 500 && status !== 409 && status !== 423) {
-          return false;
-        }
+          if (status === 409) {
+            return false;
+          }
 
-        return retryAttempt < config.upload.retryDelays.length;
-      },
+          if (status && status >= 400 && status < 500 && status !== 423) {
+            return false;
+          }
+
+          return retryAttempt < config.upload.retryDelays.length;
+        },
+      });
+
+      upload.start();
     });
+  } catch (error: any) {
+    const status = error?.originalResponse?.getStatus?.();
+    const message = error instanceof Error ? error.message : String(error);
 
-    upload
-      .findPreviousUploads()
-      .then((previousUploads) => {
-        if (previousUploads.length > 0) {
-          upload.resumeFromPreviousUpload(previousUploads[0]);
-        }
+    if (status === 409 || message.includes('Upload-Offset conflict')) {
+      const response = await uploadAssets([file]);
+      const uploadedAsset = response.assets[0];
+      onProgress?.(file.size, file.size);
 
-        upload.start();
-      })
-      .catch(reject);
-  });
+      if (!uploadedAsset?.id) {
+        throw new Error('Fallback upload finished but no asset id was returned');
+      }
+
+      return { assetId: uploadedAsset.id };
+    }
+
+    throw error;
+  }
 }
 
 // Get all assets with filters
@@ -225,7 +249,11 @@ export async function getAssets(
     }
   });
 
-  const response = await fetch(`${API_BASE_URL}/assets?${queryParams}`);
+  const response = await fetch(`${API_BASE_URL}/assets?${queryParams}`, {
+    headers: {
+      ...authHeaders(),
+    },
+  });
 
   if (!response.ok) {
     throw new Error('Failed to fetch assets');
@@ -242,7 +270,11 @@ export async function getAssetById(assetId: string): Promise<ApiAsset> {
     return mockAssetToApiAsset(asset);
   }
 
-  const response = await fetch(`${API_BASE_URL}/assets/${assetId}`);
+  const response = await fetch(`${API_BASE_URL}/assets/${assetId}`, {
+    headers: {
+      ...authHeaders(),
+    },
+  });
 
   if (!response.ok) {
     throw new Error('Asset not found');
@@ -263,7 +295,11 @@ export async function downloadAsset(assetId: string, fileName: string): Promise<
     return;
   }
 
-  const response = await fetch(`${API_BASE_URL}/assets/${assetId}/download`);
+  const response = await fetch(`${API_BASE_URL}/assets/${assetId}/download`, {
+    headers: {
+      ...authHeaders(),
+    },
+  });
 
   if (!response.ok) {
     throw new Error('Download failed');
@@ -344,7 +380,11 @@ export async function getStats(): Promise<ApiStats> {
     };
   }
 
-  const response = await fetch(`${API_BASE_URL}/stats`);
+  const response = await fetch(`${API_BASE_URL}/stats`, {
+    headers: {
+      ...authHeaders(),
+    },
+  });
 
   if (!response.ok) {
     throw new Error('Failed to fetch stats');
@@ -378,11 +418,11 @@ export function convertApiAsset(apiAsset: ApiAsset) {
     mimeType: apiAsset.mimeType,
     uploadedAt: new Date(apiAsset.uploadedAt),
     thumbnailUrl: apiAsset.thumbnailUrl.startsWith('http')
-      ? apiAsset.thumbnailUrl
-      : `${API_BASE_URL.replace('/api', '')}${apiAsset.thumbnailUrl}`,
+      ? withAuthToken(apiAsset.thumbnailUrl)
+      : withAuthToken(`${API_BASE_URL.replace('/api', '')}${apiAsset.thumbnailUrl}`),
     url: apiAsset.url.startsWith('http')
-      ? apiAsset.url
-      : `${API_BASE_URL.replace('/api', '')}${apiAsset.url}`,
+      ? withAuthToken(apiAsset.url)
+      : withAuthToken(`${API_BASE_URL.replace('/api', '')}${apiAsset.url}`),
     downloads: apiAsset.downloads,
     tags: apiAsset.tags,
     metadata: apiAsset.metadata,
