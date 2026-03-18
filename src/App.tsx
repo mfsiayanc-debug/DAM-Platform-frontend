@@ -23,6 +23,10 @@ export default function App() {
 
   // Load assets on mount (and when auth state changes, so authenticated calls get token)
   useEffect(() => {
+    if (!isAuthenticated) {
+      return;
+    }
+
     loadAssets();
   }, [loadAssets, isAuthenticated]);
 
