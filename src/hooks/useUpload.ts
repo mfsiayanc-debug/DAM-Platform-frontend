@@ -1,7 +1,7 @@
 import { useState, useCallback } from 'react';
 import * as api from '../services/api';
 import { UploadJob } from '../types';
-import { toast } from 'sonner@2.0.3';
+import { toast } from 'sonner';
 import { config } from '../config';
 
 export function useUpload(onComplete?: (assetIds: string[]) => void) {
@@ -19,10 +19,33 @@ export function useUpload(onComplete?: (assetIds: string[]) => void) {
           const assetPromises = assetIds.map((id) => api.getAssetById(id));
           const fetchedAssets = await Promise.all(assetPromises);
 
+          const failedAssets = fetchedAssets.filter((asset) => asset.status === 'failed');
           const allProcessed = fetchedAssets.every((asset) => asset.status === 'completed');
 
-          if (allProcessed || attempts >= config.polling.maxAttempts) {
+          if (failedAssets.length > 0 || allProcessed || attempts >= config.polling.maxAttempts) {
             clearInterval(pollInterval);
+
+            if (failedAssets.length > 0) {
+              jobs.forEach((job) => {
+                setUploadJobs((prev) =>
+                  prev.map((j) =>
+                    j.id === job.id
+                      ? { ...j, status: 'failed' as const, error: 'Asset processing failed' }
+                      : j,
+                  ),
+                );
+              });
+
+              toast.error(
+                `${failedAssets.length} ${failedAssets.length === 1 ? 'asset failed during processing' : 'assets failed during processing'}`,
+              );
+
+              setTimeout(() => {
+                setUploadJobs((prev) => prev.filter((j) => !jobs.find((job) => job.id === j.id)));
+              }, config.ui.failedJobRemovalDelay);
+
+              return;
+            }
 
             // Mark jobs as completed
             jobs.forEach((job) => {
@@ -50,6 +73,32 @@ export function useUpload(onComplete?: (assetIds: string[]) => void) {
             }
           }
         } catch (err) {
+          if (err instanceof Error && err.message === 'Asset not found') {
+            clearInterval(pollInterval);
+
+            jobs.forEach((job) => {
+              setUploadJobs((prev) =>
+                prev.map((j) =>
+                  j.id === job.id
+                    ? {
+                        ...j,
+                        status: 'failed' as const,
+                        error: 'Uploaded asset could not be found on the server',
+                      }
+                    : j,
+                ),
+              );
+            });
+
+            toast.error('Uploaded asset could not be found on the server');
+
+            setTimeout(() => {
+              setUploadJobs((prev) => prev.filter((j) => !jobs.find((job) => job.id === j.id)));
+            }, config.ui.failedJobRemovalDelay);
+
+            return;
+          }
+
           console.error('Error polling for asset status:', err);
         }
       }, config.polling.interval);
